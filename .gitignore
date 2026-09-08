@@ -4,3 +4,6 @@ sdkconfig.old
 *.o
 *.elf
 .vscode/
+/t
+*.out
+compile_commands.json
