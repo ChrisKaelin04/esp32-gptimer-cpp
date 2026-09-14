@@ -33,4 +33,10 @@ class Gptimer {
         gptimer_handle_t get() const noexcept {
             return handle_;
         }
+
+        [[nodiscard]] gptimer_handle_t release() noexcept {
+            gptimer_handle_t h = handle_;
+            handle_ = nullptr;
+            return h;
+        }
 };
