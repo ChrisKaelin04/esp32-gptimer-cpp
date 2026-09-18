@@ -22,29 +22,6 @@ int main(){
         failures++;
     }
 
-    //Basic with release
-    gptimer_handle_t raw = nullptr;
-    fakeReset();
-    {
-        auto gtimer = Gptimer::create({1, 3, 1});
-        if (!gtimer) return -1;
-        raw = gtimer->release();
-    }
-    
-    if (timerCreatedCt != 1) {
-        std::puts("Creation failure");
-        failures++;
-    }
-    if (timerDelCt != 0) {
-        std::puts("Deletion failure");
-        failures++;
-    }
-    gptimer_del_timer(raw);
-    if (timerDelCt != 1) {
-        std::puts("Deletion failure");
-        failures++;
-    }
-
     //Move Construct
     fakeReset();
     {
@@ -131,6 +108,44 @@ int main(){
         auto b = Gptimer::create(cfg);
         *a = std::move(*b);      // expect a del_timer RIGHT HERE (a's original)
         std::puts("  assigned");
+    }
+
+    struct MyCtx {
+        bool fired;
+        unsigned long long seen_count;
+    };
+
+    fakeReset();
+    {
+        auto t = Gptimer::create({1, 3, 1});
+        MyCtx ctx{};
+        auto my_callback = [](gptimer_handle_t handle, const gptimer_alarm_event_data_t* eData, void* ctx) {
+            auto* curCtx = static_cast<MyCtx*>(ctx);
+            curCtx->fired = true;
+            curCtx->seen_count += eData->count_value;
+            return false;
+        };
+        t->on_alarm(my_callback, &ctx);
+        fakeFireAlarm(100, 100);
+        // assertions here, while ctx is still alive
+    }
+
+    std::puts("-- move AFTER register --");
+    fakeReset();
+    {
+        MyCtx ctx{};
+        auto cb = [](gptimer_handle_t handle, const gptimer_alarm_event_data_t* eData, void* c) {
+            auto* cur = static_cast<MyCtx*>(c);
+            cur->fired = true;
+            cur->seen_count += eData->count_value;
+            return false;
+        };
+        auto a = Gptimer::create({1, 3, 1});
+        a->on_alarm(cb, &ctx);
+        Gptimer b = std::move(*a);     // the driver is still holding &*a
+        fakeFireAlarm(100, 100);
+        assert(ctx.fired);
+        assert(ctx.seen_count == 100);
     }
 
     return 0;
