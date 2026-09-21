@@ -9,6 +9,7 @@ class Gptimer {
         gptimer_handle_t handle = nullptr;
         void* user_ctx = nullptr;
         gptimer_alarm_cb_t cb = nullptr;
+        ~Ctl() {if (handle) gptimer_del_timer(handle);}
     };
     std::unique_ptr<Ctl> ctl_;
 
@@ -18,23 +19,11 @@ class Gptimer {
         ctl_->handle = passed_handle_;
     }
     public:
-        ~Gptimer() noexcept {
-            if (ctl_ && ctl_->handle) {
-                gptimer_del_timer(ctl_->handle);
-            }
-        }
-
+        ~Gptimer() noexcept = default;
         Gptimer(const Gptimer& timer) = delete;
         Gptimer& operator=(const Gptimer& timer) = delete;
-
-        Gptimer(Gptimer&& other) noexcept : ctl_(std::move(other.ctl_)) {}
-
-        Gptimer& operator=(Gptimer&& timer) noexcept {
-            if (&timer == this) return *this;
-            if (ctl_ && ctl_->handle) gptimer_del_timer(ctl_->handle);
-            ctl_ = std::move(timer.ctl_);
-            return *this;
-        }
+        Gptimer(Gptimer&& other) noexcept = default;
+        Gptimer& operator=(Gptimer&& timer) noexcept = default;
 
         static std::optional<Gptimer> create(const gptimer_config_t& cfg) {
             gptimer_handle_t handle = nullptr;
